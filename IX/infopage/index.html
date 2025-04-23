@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unit Compendium</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #1a202c;
+      color: white;
+      max-width: 600px;
+      margin: auto;
+      padding: 1rem;
+    }
+    .unit {
+      background-color: #2d3748;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 1rem;
+      border: 1px solid #4a5568;
+    }
+    .unit h2 {
+      margin-top: 0;
+    }
+    .unit ul {
+      margin-left: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">Unit Compendium</h1>
+  <div id="units"></div>
+
+  <!-- Load your unitTypes.js first -->
+  <script src="unitTypes.js"></script>
+
+  <script>
+    const unitData = window.unitTypes;
+    const upgrades = window.unitUpgrades;
+    const container = document.getElementById("units");
+
+    for (const key in unitData) {
+      const unit = unitData[key];
+      const stats = unit.stats;
+      const unitDiv = document.createElement("div");
+      unitDiv.className = "unit";
+
+      const abilitiesList = (stats.abilities || [])
+        .map(ability => {
+          return `<li><strong>${ability.name}</strong>${ability.passive ? ' (Passive)' : ''}: ${ability.description}</li>`;
+        }).join("");
+
+      const upgradeList = (stats.possibleUpgrades || [])
+        .map(upgKey => {
+          const upg = upgrades[upgKey];
+          return upg ? `<li><strong>${upg.name}:</strong> ${upg.description} <span style="color:#999;">(Cost: ${upg.cost})</span></li>` : '';
+        }).join("");
+
+      unitDiv.innerHTML = `
+        <h2 style="color: ${stats.color};">${unit.name}</h2>
+        <p><strong>Cost:</strong> ${unit.cost} | <strong>Fortress Level:</strong> ${unit.requiredFortressLevel}</p>
+        <ul>
+          <li><strong>HP:</strong> ${stats.maxHealth}</li>
+          ${stats.maxMana ? `<li><strong>Mana:</strong> ${stats.maxMana}</li>` : ''}
+          <li><strong>Attack:</strong> ${stats.attackPower.min}–${stats.attackPower.max}</li>
+          <li><strong>Type:</strong> ${stats.attackType}</li>
+          <li><strong>Range:</strong> ${stats.attackRange}</li>
+          <li><strong>Speed:</strong> ${stats.speed}</li>
+          <li><strong>Armor:</strong> ${stats.armorType} (${stats.armorValue})</li>
+          <li><strong>Attack Speed:</strong> ${stats.attackSpeed}</li>
+        </ul>
+        ${abilitiesList ? `<h4>Abilities</h4><ul>${abilitiesList}</ul>` : ''}
+        ${upgradeList ? `<h4>Upgrades</h4><ul>${upgradeList}</ul>` : ''}
+      `;
+
+      container.appendChild(unitDiv);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoloStrike</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      touch-action: none;
+      font-family: Arial, sans-serif;
+    }
+    
+    #gameCanvas {
+      border: 1px solid #444;
+      width: 360px;
+      height: 640px;
+      display: block;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* For desktop testing */
+    @media (min-width: 768px) {
+      #gameCanvas {
+        max-height: 85vh;
+        width: auto;
+      }
+    }
+    
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .game-title {
+      color: #fff;
+      margin-bottom: 10px;
+      text-align: center;
+      display: none; /* Hide by default as it's rendered in the canvas */
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <canvas id="gameCanvas"></canvas>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
