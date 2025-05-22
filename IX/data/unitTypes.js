@@ -1,4 +1,4 @@
-  // units/unitTypes.js - Unit definitions with reimagined fantasy units
+// units/unitTypes.js - Unit definitions with reimagined fantasy units
 
   // Define all unit types with their stats
   export const unitTypes = {
@@ -25,7 +25,8 @@
             effect: "defend",
             description: "50% less damage from piercing attacks",
             enabled: false,
-            requiredUpgrade: "phalanxStance"
+            requiredUpgrade: "phalanxStance",
+            pierceDamageReductionPercentage: 0.5
           }
         ],
         possibleUpgrades: ['phalanxStance']
@@ -88,10 +89,10 @@
         color: "#3498db", // Cosmic blue for luminescent markings
         abilities: [
           {
-            name: "Cleanse",
+            name: "Cleanse", 
             manaCost: 75,
             cooldown: 5,
-            effect: "purge",
+            effect: "purge", 
             description: "Dispels a target unit",
             enabled: true
           },
@@ -102,16 +103,24 @@
             effect: "castLightningShield",
             description: "Creates a storm shield dealing AoE damage to the target any other enemy in range",
             enabled: false,
-            requiredUpgrade: "stormAegis"
+            requiredUpgrade: "stormAegis",
+            effectDuration: 15,
+            damagePerSecond: 20,
+            aoeRadius: 30,
+            splashDamageFactor: 0.5 
           },
           {
             name: "Primal Fury",
-            manaCost: 0,
+            manaCost: 0, 
             cooldown: 3,
             effect: "castBloodlust",
             description: "Buff friendly units with increased speed",
             enabled: false,
-            requiredUpgrade: "primalFury"
+            requiredUpgrade: "primalFury",
+            aoeRadius: 300,
+            effectDuration: 15,
+            attackSpeedBonusPercentage: 0.4,
+            moveSpeedBonusPercentage: 0.25
           }
         ],
         possibleUpgrades: ['stormAegis', 'primalFury']
@@ -141,7 +150,10 @@
             effect: "burningOil",
             description: "Each attack burns the ground for AoE damage",
             enabled: false,
-            requiredUpgrade: "infernoPayload"
+            requiredUpgrade: "infernoPayload",
+            aoeRadius: 80,
+            effectDuration: 5,
+            damagePerSecond: 15
           }
         ],
         possibleUpgrades: ['infernoPayload']
@@ -172,7 +184,8 @@
             cooldown: 1.2,
             effect: "heal",
             description: "Heals a friendly unit for 25 HP",
-            enabled: true
+            enabled: true,
+            healAmount: 25
           },
           {
             name: "Arcane Nullification",
@@ -181,7 +194,8 @@
             effect: "castDispelMagic",
             description: "Area dispel in a 150 radius",
             enabled: false,
-            requiredUpgrade: "arcaneNullification"
+            requiredUpgrade: "arcaneNullification",
+            aoeRadius: 150
           },
           {
             name: "Soul Fortification",
@@ -190,7 +204,10 @@
             effect: "castInnerFire",
             description: "Buff friendly unit with armor and damage",
             enabled: false,
-            requiredUpgrade: "soulFortification"
+            requiredUpgrade: "soulFortification",
+            effectDuration: 30,
+            armorBonus: 5,
+            damageBonusPercentage: 0.1
           }
         ],
         possibleUpgrades: ['arcaneNullification', 'soulFortification']
@@ -221,7 +238,11 @@
             cooldown: 15,
             effect: "spiritLink",
             description: "Links 4 friendly units to distribute 50% of damage received",
-            enabled: true
+            enabled: true,
+            aoeRadius: 300,
+            maxLinkedUnits: 4,
+            damageSharingPercentage: 0.5,
+            effectDuration: 45
           },
           {
             name: "Charm Breaker",
@@ -230,7 +251,8 @@
             effect: "castDisenchant",
             description: "Area dispel in a 120 radius",
             enabled: false,
-            requiredUpgrade: "charmBreaker"
+            requiredUpgrade: "charmBreaker",
+            aoeRadius: 120
           },
           {
             name: "Phantom Summons",
@@ -239,7 +261,9 @@
             effect: "castAncestralSpirit",
             description: "Resurrect a dead unit",
             enabled: false,
-            requiredUpgrade: "phantomSummons"
+            requiredUpgrade: "phantomSummons",
+            resurrectableUnitTypes: ["juggernaut", "astralNomad"],
+            maxCorpseAgeSeconds: 60
           }
         ],
         possibleUpgrades: ['charmBreaker', 'phantomSummons']
@@ -263,7 +287,7 @@
         color: "#c0392b", // Crimson accents on obsidian armor
         abilities: [
           {
-            name: "Binding Chains",
+            name: "Binding Chains", 
             manaCost: 0,
             cooldown: 16,
             effect: "ensnare",
@@ -275,7 +299,8 @@
             passive: true,
             effect: "pillage",
             description: "Gain 10 gold per attack on a building",
-            enabled: true
+            enabled: true,
+            goldPerHit: 10
           }
         ],
         possibleUpgrades: []
@@ -296,17 +321,17 @@
         speed: 35,
         armorType: 'unarmored',
         armorValue: 1,
-        color: "#795548", // Earthy brown for beast hide with tribal markings
+        color: "#795548", // Earthy brown for tribal markings
         abilities: [
           {
-            name: "Consumption",
+            name: "Consumption", 
             cooldown: 20,
             effect: "devour",
             description: "Consumes an enemy unit over time",
             enabled: true
           }, 
           {
-            name: "Battle Cadence",
+            name: "Battle Cadence", 
             passive: true,
             effect: "warDrum",
             description: "Nearby friendly units gain 5% damage",
@@ -314,9 +339,9 @@
             enabled: true
           },
           {
-            name: "Resonant Echo",
+            name: "Resonant Echo", 
             passive: true,
-            effect: "warDrumUpgrade",
+            effect: "warDrumUpgrade", 
             description: "Increases the damage bonus of Battle Cadence by 10%",
             enabled: false,
             requiredUpgrade: "resonantEcho"
@@ -349,7 +374,10 @@
             effect: "pulverize",
             description: "25% chance to deal 60 AOE damage on attacks",
             enabled: false,
-            requiredUpgrade: "seismicSlam"
+            requiredUpgrade: "seismicSlam",
+            procChance: 0.25,
+            aoeRadius: 60,
+            aoeDamage: 60
           }
         ],
         possibleUpgrades: ['seismicSlam']
@@ -368,7 +396,7 @@
         attackRange: 35, // melee
         attackSpeed: 1.63,
         speed: 35,
-        armorType: 'normal', // Adding 'normal' armor type
+        armorType: 'normal', 
         armorValue: 0,
         color: "#7f8c8d", // Stone-like gray with crystal accents
         abilities: [
@@ -378,7 +406,9 @@
             cooldown: 15,
             effect: "taunt",
             description: "Nearby enemies are forced to attack this unit",
-            enabled: true
+            enabled: true,
+            aoeRadius: 250,
+            debuffDuration: 5
           },
           {
             name: "Crystalline Carapace",
@@ -386,7 +416,9 @@
             effect: "hardenSkin",
             description: "Reduces all attacks by 8 damage (minimum 3)",
             enabled: false,
-            requiredUpgrade: "crystallineCarapace"
+            requiredUpgrade: "crystallineCarapace",
+            damageReductionAmount: 8,
+            minDamageTaken: 3
           }
         ],
         possibleUpgrades: ['crystallineCarapace']
@@ -415,7 +447,8 @@
             effect: "freezingBreath",
             description: "Attacks stop buildings from attacking",
             enabled: false,
-            requiredUpgrade: "glacialTempest"
+            requiredUpgrade: "glacialTempest",
+            stunDuration: 4
           }
         ],
         possibleUpgrades: ['glacialTempest']
@@ -481,7 +514,7 @@
     stormAegis: {
       name: "Storm Aegis",
       cost: 100,
-      effect: "lightningShield",
+      effect: "lightningShield", 
       description: "Forms a static shield around enemy unit, dealing 20 damage per sec",
       requiredFortressLevel: 1
     },
@@ -489,7 +522,7 @@
     primalFury: {
       name: "Primal Fury",
       cost: 100,
-      effect: "bloodlust",
+      effect: "bloodlust", 
       description: "Increase friendly units attack speed by 40% and move speed by 25%",
       requiredFortressLevel: 3
     },
@@ -546,7 +579,7 @@
       requiredFortressLevel: 3,
       modifiesAbility: "warDrum",
       abilityBoost: {
-        damageBonus: 10 // +10% (total 15%)
+        damageBonus: 10 
       }
     },
     
