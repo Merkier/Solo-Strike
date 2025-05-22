@@ -1,6 +1,5 @@
 // entity/EntityManager.js - Manages all game entities
-import { Unit } from "../entity/Unit.js";
-  import { Projectile } from "../entity/Projectile.js";
+import { Unit, Projectile } from "./entities.js";
 export class EntityManager {
   constructor() {
     this.entities = new Map();

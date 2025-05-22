@@ -1,18 +1,11 @@
 // GameEngine.js - Core game loop and state management
-import { EntityManager } from './entity/EntityManager.js';
+import { EntityManager } from './EntityManager.js';
 import { SystemManager } from './systems/SystemManager.js';
-import { PlayerManager } from './managers/PlayerManager.js';
-import { GridManager } from './managers/GridManager.js';
-import { WaveManager } from './managers/WaveManager.js';
-import { InputManager } from './ui/InputManager.js';
-import { UIManager } from './ui/UIManager.js';
+import { PlayerManager, GridManager, WaveManager, AIController } from './managers.js';
+import { InputManager, UIManager } from './ui/UIManager.js';
 import { Renderer } from './rendering/Renderer.js';
-import { CombatSystem } from './systems/CombatSystem.js';
-import { AbilitySystem } from './systems/AbilitySystem.js';
-import { UpgradeSystem } from './systems/UpgradeSystem.js';
+import { CombatSystem, AbilitySystem, UpgradeSystem, MovementSystem } from './gameSystems.js';
 import { VisualEffectSystem } from './systems/VisualEffectSystem.js';
-import { MovementSystem } from './systems/MovementSystem.js';
-import { AIController } from './managers/AIController.js';
 
 
 class GameEngine {
