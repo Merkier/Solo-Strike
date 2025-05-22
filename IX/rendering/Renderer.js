@@ -174,185 +174,113 @@ export class Renderer {
 
   drawUnitIcon(ctx, unitType, x, y, size, color) {
     ctx.fillStyle = color;
-    
+    const s = size / 2; // Use half size for easier calculations centered at (x,y)
+
     switch(unitType) {
-      case 'guardian':
-        // Shield shape
+      case 'guardian': // Filled square
+        ctx.fillRect(x - s/1.5, y - s/1.5, s*1.33, s*1.33);
+        break;
+        
+      case 'stalker': // Filled triangle (pointing up)
         ctx.beginPath();
-        ctx.moveTo(x - size/3, y - size/3);
-        ctx.lineTo(x + size/3, y - size/3);
-        ctx.lineTo(x + size/3, y + size/3);
-        ctx.lineTo(x, y + size/2);
-        ctx.lineTo(x - size/3, y + size/3);
+        ctx.moveTo(x, y - s); // Top point
+        ctx.lineTo(x + s, y + s); // Bottom right
+        ctx.lineTo(x - s, y + s); // Bottom left
         ctx.closePath();
         ctx.fill();
         break;
         
-      case 'stalker':
-        // Triangle shape (asymmetrical for dynamic look)
+      case 'weaver': // Filled circle
         ctx.beginPath();
-        ctx.moveTo(x, y - size/2);
-        ctx.lineTo(x + size/3, y + size/3);
-        ctx.lineTo(x - size/3, y + size/2);
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+        
+      case 'leviathan': // Filled rectangle (wider than tall)
+        ctx.fillRect(x - s, y - s/2, s*2, s);
+        break;
+        
+      case 'oracle': // Filled diamond (rotated square)
+        ctx.beginPath();
+        ctx.moveTo(x, y - s); // Top
+        ctx.lineTo(x + s, y); // Right
+        ctx.lineTo(x, y + s); // Bottom
+        ctx.lineTo(x - s, y); // Left
         ctx.closePath();
         ctx.fill();
         break;
         
-      case 'weaver':
-        // Circle with orb
+      case 'astralNomad': // Filled 5-pointed star
         ctx.beginPath();
-        ctx.arc(x, y, size/3, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Floating orb
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(x, y - size/4, size/8, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-        
-      case 'leviathan':
-        // Mechanical construct
-        ctx.fillRect(x - size/3, y - size/3, 2*size/3, 2*size/3);
-        
-        // Cannon detail
-        ctx.fillStyle = '#555555';
-        ctx.fillRect(x - size/4, y - size/2, size/2, size/3);
-        break;
-        
-      case 'oracle':
-        // Circular icon with sacred geometry
-        ctx.beginPath();
-        ctx.arc(x, y, size/3, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Cross symbol (simplified sacred geometry)
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x - size/8, y - size/3, size/4, size*2/3); // Vertical
-        ctx.fillRect(x - size/3, y - size/8, size*2/3, size/4); // Horizontal
-        break;
-        
-      case 'astralNomad':
-        // Spiritual entity
-        ctx.beginPath();
-        ctx.arc(x, y, size/3, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Spectral aura
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 2]);
-        ctx.beginPath();
-        ctx.arc(x, y, size/2, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        break;
-        
-      case 'marauder':
-        // Aggressive jagged shape
-        ctx.beginPath();
-        ctx.moveTo(x - size/3, y - size/3);
-        ctx.lineTo(x, y - size/2);
-        ctx.lineTo(x + size/3, y - size/3);
-        ctx.lineTo(x + size/2, y);
-        ctx.lineTo(x + size/3, y + size/3);
-        ctx.lineTo(x, y + size/2);
-        ctx.lineTo(x - size/3, y + size/3);
-        ctx.lineTo(x - size/2, y);
-        ctx.closePath();
-        ctx.fill();
-        
-        // Battle mark
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(x - size/6, y - size/12);
-        ctx.lineTo(x + size/6, y - size/12);
-        ctx.lineTo(x, y + size/12);
-        ctx.closePath();
-        ctx.fill();
-        break;
-        
-      case 'trampler':
-        // Beast-like entity with tusks
-        ctx.beginPath();
-        ctx.moveTo(x, y - size/3);
-        ctx.lineTo(x + size/3, y + size/6);
-        ctx.lineTo(x, y + size/3);
-        ctx.lineTo(x - size/3, y + size/6);
-        ctx.closePath();
-        ctx.fill();
-        
-        // Tusks
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = size/12;
-        ctx.beginPath();
-        ctx.moveTo(x - size/5, y + size/6);
-        ctx.lineTo(x - size/2.5, y + size/3);
-        ctx.moveTo(x + size/5, y + size/6);
-        ctx.lineTo(x + size/2.5, y + size/3);
-        ctx.stroke();
-        break;
-        
-      case 'juggernaut':
-        // Heavy hexagonal armor
-        ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const angle = (i / 6) * Math.PI * 2;
-          const px = x + Math.cos(angle) * size/3;
-          const py = y + Math.sin(angle) * size/3;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+        for (let i = 0; i < 5; i++) {
+          ctx.lineTo(
+            x + s * Math.cos(0.8 * i * Math.PI - Math.PI / 2),
+            y + s * Math.sin(0.8 * i * Math.PI - Math.PI / 2)
+          );
+          ctx.lineTo(
+            x + (s/2) * Math.cos((0.8 * i + 0.4) * Math.PI - Math.PI / 2),
+            y + (s/2) * Math.sin((0.8 * i + 0.4) * Math.PI - Math.PI / 2)
+          );
         }
         ctx.closePath();
         ctx.fill();
+        break;
         
-        // Central reinforcement
-        ctx.fillStyle = '#ffffff';
+      case 'marauder': // Filled pentagon
         ctx.beginPath();
-        ctx.arc(x, y, size/8, 0, Math.PI * 2);
+        for (let i = 0; i < 5; i++) {
+          ctx.lineTo(
+            x + s * Math.cos(i * 2 * Math.PI / 5 - Math.PI / 2),
+            y + s * Math.sin(i * 2 * Math.PI / 5 - Math.PI / 2)
+          );
+        }
+        ctx.closePath();
         ctx.fill();
         break;
         
-      case 'colossus':
-        // Large stone entity
-        ctx.fillRect(x - size/3, y - size/3, 2*size/3, 2*size/3);
-        
-        // Stone cracks/details
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
+      case 'trampler': // Filled hexagon
         ctx.beginPath();
-        ctx.moveTo(x - size/3, y - size/6);
-        ctx.lineTo(x + size/6, y - size/6);
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + size/3, y + size/6);
-        ctx.moveTo(x - size/6, y + size/3);
-        ctx.lineTo(x - size/6, y - size/12);
-        ctx.stroke();
+        for (let i = 0; i < 6; i++) {
+          ctx.lineTo(
+            x + s * Math.cos(i * Math.PI / 3),
+            y + s * Math.sin(i * Math.PI / 3)
+          );
+        }
+        ctx.closePath();
+        ctx.fill();
         break;
         
-      case 'permafrostDrake':
-        // Ice drake (diamond shape with wings)
+      case 'juggernaut': // Filled octagon
         ctx.beginPath();
-        ctx.moveTo(x, y - size/3);
-        ctx.lineTo(x + size/5, y);
-        ctx.lineTo(x, y + size/3);
-        ctx.lineTo(x - size/5, y);
+        for (let i = 0; i < 8; i++) {
+          ctx.lineTo(
+            x + s * Math.cos(i * Math.PI / 4),
+            y + s * Math.sin(i * Math.PI / 4)
+          );
+        }
         ctx.closePath();
         ctx.fill();
+        break;
         
-        // Wings
+      case 'colossus': // Large filled circle (slightly larger than weaver)
         ctx.beginPath();
-        ctx.moveTo(x, y - size/6);
-        ctx.lineTo(x + size/2, y - size/6);
-        ctx.lineTo(x + size/3, y + size/12);
+        ctx.arc(x, y, s * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+        
+      case 'permafrostDrake': // Filled rhombus
+        ctx.beginPath();
+        ctx.moveTo(x, y - s);      // Top point
+        ctx.lineTo(x + s * 0.7, y);  // Middle right
+        ctx.lineTo(x, y + s);      // Bottom point
+        ctx.lineTo(x - s * 0.7, y);  // Middle left
         ctx.closePath();
         ctx.fill();
-        
+        break;
+
+      case 'basic': // Small filled circle
         ctx.beginPath();
-        ctx.moveTo(x, y - size/6);
-        ctx.lineTo(x - size/2, y - size/6);
-        ctx.lineTo(x - size/3, y + size/12);
-        ctx.closePath();
+        ctx.arc(x, y, s * 0.8, 0, Math.PI * 2);
         ctx.fill();
         break;
         
