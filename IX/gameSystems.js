@@ -1,5 +1,6 @@
 // IX/gameSystems.js - Consolidated game system classes
 import { Projectile, Fortress, Unit } from './entities.js'; // Assuming entities.js is in IX/
+import { spellTypes } from './data/spellTypes.js';
 
 // systems/AbilitySystem.js - Handles all abilities
 export class AbilitySystem {
@@ -50,46 +51,61 @@ export class AbilitySystem {
       const autoCastSettings = this.engine.playerManager.getAutoCastSettings(unit.type, unit.playerId);
       
       // Check each ability
-      unit.abilities.forEach(ability => {
+      unit.abilities.forEach(unitAbility => { // Renamed to unitAbility for clarity
         // Skip if ability is passive, disabled, or auto-cast is disabled
+        
+        // First, resolve to effectiveSpell to check properties like 'passive', 'enabled'
+        let effectiveSpell = unitAbility; // Default to unitAbility if not refactored
+        if (unitAbility.spellId && spellTypes[unitAbility.spellId]) {
+          effectiveSpell = { ...spellTypes[unitAbility.spellId], ...unitAbility };
+        } else if (unitAbility.spellId) {
+          // This case implies a spellId exists but no baseSpell, which is an error for an ability meant to be auto-cast
+          console.warn(`tryAutoCast: Base spell not found for spellId ${unitAbility.spellId} on unit ${unit.type}, ability ${unitAbility.name}. Skipping auto-cast.`);
+          return;
+        }
+        // If no spellId, effectiveSpell remains unitAbility; this might be a non-refactored passive/active ability.
+        // Auto-cast should generally work with refactored abilities.
+
         if (
-          ability.passive || 
-          ability.enabled === false || 
-          autoCastSettings[ability.name] === false
+          effectiveSpell.passive || 
+          effectiveSpell.enabled === false || 
+          autoCastSettings[effectiveSpell.name] === false // autoCastSettings uses name
         ) {
           return;
         }
         
-        // Skip if ability is on cooldown
-        if (ability.cooldownRemaining && ability.cooldownRemaining > 0) {
+        // Cooldown is on unitAbility (instance specific)
+        if (unitAbility.cooldownRemaining && unitAbility.cooldownRemaining > 0) {
           return;
         }
         
-        // Skip if not enough mana
-        if (ability.manaCost && unit.mana < ability.manaCost) {
+        // Mana cost from effectiveSpell
+        if (effectiveSpell.manaCost && unit.mana < effectiveSpell.manaCost) {
           return;
         }
         
-        // Try to auto-cast the ability
-        this.tryAutoCast(unit, ability);
+        // Try to auto-cast the ability, passing the original unitAbility (which useAbility will resolve by name)
+        // but the tryAutoCast decision logic itself uses effectiveSpell.
+        this.tryAutoCast(unit, unitAbility, effectiveSpell); // Pass both for context
       });
     });
   }
     
-tryAutoCast(unit, ability) {
+tryAutoCast(unit, unitAbility, effectiveSpell) { // unitAbility is for calling useAbility, effectiveSpell for logic here
   const enemyUnits = this.engine.entities.getUnits()
     .filter(u => u.playerId !== unit.playerId && this.distanceBetween(unit, u) <= unit.attackRange);
   
   const friendlyUnits = this.engine.entities.getUnits()
     .filter(u => u.playerId === unit.playerId && u !== unit && this.distanceBetween(unit, u) <= unit.attackRange);
   
-  if (ability.effect !== 'castBloodlust' && // Bloodlust might not need a target if it's self-centered AoE
-      !['dispel', 'castDispelMagic', 'disenchant'].includes(ability.effect) && // Dispel might be ground targeted
-      enemyUnits.length === 0 && friendlyUnits.length === 0 && ability.requiresTarget !== false) { // Added requiresTarget check
+  // Use effectiveSpell for decision logic
+  if (effectiveSpell.effect !== 'castBloodlust' && 
+      !['dispel', 'castDispelMagic', 'disenchant'].includes(effectiveSpell.effect) && 
+      enemyUnits.length === 0 && friendlyUnits.length === 0 && effectiveSpell.requiresTarget !== false) {
     return; 
   }
   
-  switch(ability.effect) {
+  switch(effectiveSpell.effect) { // Use effectiveSpell for effect
     case 'heal':
       const injuredAllies = friendlyUnits
         .filter(ally => ally.health < ally.maxHealth * 0.7)
@@ -97,43 +113,43 @@ tryAutoCast(unit, ability) {
       
       if (injuredAllies.length > 0) {
         const target = injuredAllies[0]; 
-        this.useAbility(unit, ability.name, target.x, target.y, target);
+        this.useAbility(unit, unitAbility.name, target.x, target.y, target); // Call with unitAbility.name
       }
       break;
       
     case 'dispel':
     case 'castDispelMagic':
     case 'disenchant':
-      const dispelRadius = ability.aoeRadius || 150; // Use ability's radius
-      if (enemyUnits.length >= 3) { // Consider making this count data-driven
+      const dispelRadius = effectiveSpell.aoeRadius || 150; // Use effectiveSpell
+      if (enemyUnits.length >= 3) { 
         const enemiesWithBuffs = enemyUnits.filter(enemy => 
           enemy.buffs && Object.keys(enemy.buffs).length > 0
         );
         
-        if (enemiesWithBuffs.length >= 2) { // Consider making this count data-driven
+        if (enemiesWithBuffs.length >= 2) { 
           const centerX = enemiesWithBuffs.reduce((sum, u) => sum + u.x, 0) / enemiesWithBuffs.length;
           const centerY = enemiesWithBuffs.reduce((sum, u) => sum + u.y, 0) / enemiesWithBuffs.length;
           
           if (this.distanceBetween(unit, {x: centerX, y: centerY}) <= unit.attackRange) {
-            this.useAbility(unit, ability.name, centerX, centerY);
+            this.useAbility(unit, unitAbility.name, centerX, centerY); // Call with unitAbility.name
           }
         }
       }
       break;
       
     case 'castBloodlust':
-      const bloodlustDetectionRange = ability.aoeRadius || Math.min(unit.attackRange, 300);
+      const bloodlustDetectionRange = effectiveSpell.aoeRadius || Math.min(unit.attackRange, 300); // Use effectiveSpell
       const unbuffedFriendlies = this.engine.entities.getUnits(unit.playerId)
         .filter(u => u !== unit && 
                 this.distanceBetween(unit, u) <= bloodlustDetectionRange &&
                 (!u.buffs || !u.buffs["Bloodlust"])); 
       
-      if (unbuffedFriendlies.length >= (ability.minUnitsToCast || 3) ) { // Make minUnitsToCast data-driven if needed
+      if (unbuffedFriendlies.length >= (effectiveSpell.minUnitsToCast || 3) ) { // Use effectiveSpell
         const centerX = unbuffedFriendlies.reduce((sum, u) => sum + u.x, 0) / unbuffedFriendlies.length;
         const centerY = unbuffedFriendlies.reduce((sum, u) => sum + u.y, 0) / unbuffedFriendlies.length;
         
         if (this.distanceBetween(unit, {x: centerX, y: centerY}) <= unit.attackRange) {
-          this.useAbility(unit, ability.name, centerX, centerY);
+          this.useAbility(unit, unitAbility.name, centerX, centerY); // Call with unitAbility.name
         }
       }
       break;
@@ -153,19 +169,19 @@ tryAutoCast(unit, ability) {
             return bValue - aValue;
           });
         const target = sortedEnemies[0];
-        this.useAbility(unit, ability.name, target.x, target.y, target);
+        this.useAbility(unit, unitAbility.name, target.x, target.y, target); // Call with unitAbility.name
       }
       break;
       
     case 'taunt':
-      const tauntRadius = ability.aoeRadius || 150;
+      const tauntRadius = effectiveSpell.aoeRadius || 150; // Use effectiveSpell
       const nearbyEnemies = enemyUnits.filter(enemy => 
         this.distanceBetween(unit, enemy) < tauntRadius &&
         (!enemy.debuffs || !enemy.debuffs["Taunted"]) 
       );
       
-      if (nearbyEnemies.length >= (ability.minUnitsToTaunt || 2) ) { // Make minUnitsToTaunt data-driven if needed
-        this.useAbility(unit, ability.name, unit.x, unit.y);
+      if (nearbyEnemies.length >= (effectiveSpell.minUnitsToTaunt || 2) ) { // Use effectiveSpell
+        this.useAbility(unit, unitAbility.name, unit.x, unit.y); // Call with unitAbility.name
       }
       break;
       
@@ -184,30 +200,47 @@ tryAutoCast(unit, ability) {
             return bAttack - aAttack;
           });
         const target = sortedAllies[0];
-        this.useAbility(unit, ability.name, target.x, target.y, target);
+        this.useAbility(unit, unitAbility.name, target.x, target.y, target); // Call with unitAbility.name
       }
       break;
   }
 }
 
 useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
-  const ability = unit.abilities.find(a => a.name === abilityName);
-  if (!ability) {
+  const unitAbility = unit.abilities.find(a => a.name === abilityName);
+  if (!unitAbility) {
     console.log(`Ability ${abilityName} not found for unit ${unit.type}`);
     return false;
   }
+
+  // Fetch base spell and create effective spell
+  const baseSpell = spellTypes[unitAbility.spellId];
+  if (!baseSpell && unitAbility.spellId) { // spellId implies it should have a baseSpell
+    console.error(`Base spell not found for spellId: ${unitAbility.spellId} in ability ${abilityName} for unit ${unit.type}`);
+    return false; // Or handle as a non-refactored ability if that's a possible state
+  }
   
-  if (ability.enabled === false) {
+  // If spellId is undefined, it means this ability was not refactored (e.g. a very specific passive not genericized)
+  // However, useAbility is typically for active spells which should have spellId.
+  // For now, we assume if it has a spellId, baseSpell must exist. If no spellId, it's an error here.
+  if (!unitAbility.spellId) {
+      console.error(`Ability ${abilityName} for unit ${unit.type} is missing a spellId and cannot be used.`);
+      return false;
+  }
+
+  const effectiveSpell = { ...baseSpell, ...unitAbility };
+
+  if (effectiveSpell.enabled === false) { // Check effectiveSpell for enabled status
     console.log(`Ability ${abilityName} is not enabled for this unit`);
     return false;
   }
   
-  if (ability.cooldownRemaining && ability.cooldownRemaining > 0) {
-    console.log(`${abilityName} is on cooldown: ${ability.cooldownRemaining.toFixed(1)}s`);
+  if (unitAbility.cooldownRemaining && unitAbility.cooldownRemaining > 0) { // Cooldown is on unitAbility
+    console.log(`${abilityName} is on cooldown: ${unitAbility.cooldownRemaining.toFixed(1)}s`);
     return false;
   }
 
-  const castRange = ability.castRange || unit.attackRange; // Use ability-specific cast range or unit's attack range
+  const castRange = effectiveSpell.castRange || unit.attackRange; // Use effectiveSpell for castRange
   if (targetUnit) {
     const distance = this.distanceBetween(unit, targetUnit);
     if (distance > castRange) {
@@ -225,48 +258,48 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     }
   }
 
-  if (ability.manaCost && unit.mana < ability.manaCost) {
+  if (effectiveSpell.manaCost && unit.mana < effectiveSpell.manaCost) { // Use effectiveSpell for manaCost
     console.log(`Not enough mana for ${abilityName}`);
     return false;
   }
   
-  if (ability.manaCost) {
-    unit.mana -= ability.manaCost;
+  if (effectiveSpell.manaCost) {
+    unit.mana -= effectiveSpell.manaCost; // Use effectiveSpell for manaCost
   }
   
-  ability.cooldownRemaining = ability.cooldown;
+  unitAbility.cooldownRemaining = effectiveSpell.cooldown; // Cooldown set on unitAbility, value from effectiveSpell
   
   let success = false;
   
-  switch(ability.effect) {
+  switch(effectiveSpell.effect) { // Use effectiveSpell for effect
     case 'heal':
-      success = this.castHeal(unit, targetUnit, ability); // Pass ability object
+      success = this.castHeal(unit, targetUnit, effectiveSpell); // Pass effectiveSpell
       break;
     case 'dispel':
     case 'castDispelMagic':
     case 'disenchant':
-      success = this.castDispel(unit, targetX, targetY, ability); // Pass ability object
+      success = this.castDispel(unit, targetX, targetY, effectiveSpell); // Pass effectiveSpell
       break;
     case 'castBloodlust':
-      success = this.castBloodlust(unit, targetX, targetY, ability); // Pass ability object
+      success = this.castBloodlust(unit, targetX, targetY, effectiveSpell); // Pass effectiveSpell
       break;
     case 'castInnerFire':
-      success = this.castInnerFire(unit, targetUnit, ability); // Pass ability object
+      success = this.castInnerFire(unit, targetUnit, effectiveSpell); // Pass effectiveSpell
       break;
     case 'castLightningShield':
-      success = this.castLightningShield(unit, targetUnit, ability); // Pass ability object
+      success = this.castLightningShield(unit, targetUnit, effectiveSpell); // Pass effectiveSpell
       break;
     case 'taunt':
-      success = this.castTaunt(unit, ability); // Pass ability object
+      success = this.castTaunt(unit, effectiveSpell); // Pass effectiveSpell
       break;
     case 'spiritLink':
-      success = this.castSpiritLink(unit, targetX, targetY, ability); // Pass ability object
+      success = this.castSpiritLink(unit, targetX, targetY, effectiveSpell); // Pass effectiveSpell
       break;
     case 'ancestralSpirit':
-      success = this.castAncestralSpirit(unit, targetX, targetY, ability); // Pass ability object
+      success = this.castAncestralSpirit(unit, targetX, targetY, effectiveSpell); // Pass effectiveSpell
       break;
     default:
-      console.log(`Ability effect type not implemented: ${ability.effect}`);
+      console.log(`Ability effect type not implemented: ${effectiveSpell.effect}`); // Use effectiveSpell
       return false;
   }
   
@@ -274,25 +307,26 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
   return success;
 }
     
-  castHeal(caster, target, ability) { // Added ability parameter
+  castHeal(caster, target, effectiveSpell) { // Changed ability to effectiveSpell
     if (!target || target.playerId !== caster.playerId) return false;
     
     this.engine.systems.get('visual').createEffect({
       type: 'heal', x: target.x, y: target.y, duration: 1.5
     });
     
-    const healAmount = ability.healAmount || 25; // Use data-driven healAmount
+    const healAmount = effectiveSpell.healAmount || 25; // Use effectiveSpell
     target.health = Math.min(target.maxHealth, target.health + healAmount);
     
     this.addBuff({
-      name: "Divine Mending", targetUnit: target, source: caster, duration: 1,
+      name: "Divine Mending", targetUnit: target, source: caster, duration: 1, // Name from effectiveSpell or keep as is?
+      // name should be effectiveSpell.name for consistency, but "Divine Mending" is also the original ability.name
       visualOnly: true, visualEffect: "healGlow"
     });
     return true;
   }
     
-  castDispel(caster, targetX, targetY, ability) { // Added ability parameter
-    const radius = ability.aoeRadius || 150; // Use data-driven radius
+  castDispel(caster, targetX, targetY, effectiveSpell) { // Changed ability to effectiveSpell
+    const radius = effectiveSpell.aoeRadius || 150; // Use effectiveSpell
     this.engine.systems.get('visual').createEffect({
       type: 'dispel', x: targetX, y: targetY, radius: radius, duration: 1.5
     });
@@ -311,8 +345,8 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     return true;
   }
     
-  castBloodlust(caster, targetX, targetY, ability) { // Added ability parameter
-    const radius = ability.aoeRadius || 300;
+  castBloodlust(caster, targetX, targetY, effectiveSpell) { // Changed ability to effectiveSpell
+    const radius = effectiveSpell.aoeRadius || 300; // Use effectiveSpell
     this.engine.systems.get('visual').createEffect({
       type: 'bloodlust', x: targetX, y: targetY, radius: radius, duration: 1.5
     });
@@ -326,18 +360,18 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     
     unitsInRange.forEach(unit => {
       this.addBuff({
-        name: "Bloodlust", targetUnit: unit, source: caster,
-        duration: ability.effectDuration || 15,
-        effect: "bloodlust",
-        attackSpeedBonusPercentage: ability.attackSpeedBonusPercentage || 0.4,
-        moveSpeedBonusPercentage: ability.moveSpeedBonusPercentage || 0.25,
+        name: effectiveSpell.name || "Bloodlust", targetUnit: unit, source: caster, // Use effectiveSpell
+        duration: effectiveSpell.effectDuration || 15, // Use effectiveSpell
+        effect: "bloodlust", // This is the effect key, should be effectiveSpell.effect
+        attackSpeedBonusPercentage: effectiveSpell.attackSpeedBonusPercentage || 0.4, // Use effectiveSpell
+        moveSpeedBonusPercentage: effectiveSpell.moveSpeedBonusPercentage || 0.25, // Use effectiveSpell
         visualEffect: "bloodlustAura"
       });
     });
     return true;
   }
     
-  castInnerFire(caster, target, ability) { // Added ability parameter
+  castInnerFire(caster, target, effectiveSpell) { // Changed ability to effectiveSpell
     if (!target || target.playerId !== caster.playerId) return false;
     
     this.engine.systems.get('visual').createEffect({
@@ -345,40 +379,40 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     });
     
     this.addBuff({
-      name: "Inner Fire", targetUnit: target, source: caster,
-      duration: ability.effectDuration || 30,
-      effect: "innerFire",
-      armorBonus: ability.armorBonus || 5,
-      damageBonusPercentage: ability.damageBonusPercentage || 0.1,
+      name: effectiveSpell.name || "Inner Fire", targetUnit: target, source: caster, // Use effectiveSpell
+      duration: effectiveSpell.effectDuration || 30, // Use effectiveSpell
+      effect: "innerFire", // This is the effect key, should be effectiveSpell.effect
+      armorBonus: effectiveSpell.armorBonus || 5, // Use effectiveSpell
+      damageBonusPercentage: effectiveSpell.damageBonusPercentage || 0.1, // Use effectiveSpell
       visualEffect: "innerFireAura"
     });
     return true;
   }
   
-  castLightningShield(caster, target, ability) { // Added ability parameter
+  castLightningShield(caster, target, effectiveSpell) { // Changed ability to effectiveSpell
     if (!target || target.playerId === caster.playerId) return false;
     
     const effect = this.engine.systems.get('visual').createEffect({
       type: 'lightningShield', targetUnit: target,
-      duration: ability.effectDuration || 15,
-      damage: ability.damagePerSecond || 20, 
-      radius: ability.aoeRadius || 30 
+      duration: effectiveSpell.effectDuration || 15, // Use effectiveSpell
+      damage: effectiveSpell.damagePerSecond || 20,  // Use effectiveSpell
+      radius: effectiveSpell.aoeRadius || 30       // Use effectiveSpell
     });
     
     this.addDebuff({
-      name: "Lightning Shield", targetUnit: target, source: caster,
-      duration: ability.effectDuration || 15,
-      effect: "lightningShield",
-      damagePerSecond: ability.damagePerSecond || 20,
-      aoeRadius: ability.aoeRadius || 30,
-      splashDamageFactor: ability.splashDamageFactor || 0.5, // Added from ability data
+      name: effectiveSpell.name || "Lightning Shield", targetUnit: target, source: caster, // Use effectiveSpell
+      duration: effectiveSpell.effectDuration || 15, // Use effectiveSpell
+      effect: "lightningShield", // This is the effect key, should be effectiveSpell.effect
+      damagePerSecond: effectiveSpell.damagePerSecond || 20, // Use effectiveSpell
+      aoeRadius: effectiveSpell.aoeRadius || 30, // Use effectiveSpell
+      splashDamageFactor: effectiveSpell.splashDamageFactor || 0.5, // Use effectiveSpell
       visualEffect: effect
     });
     return true;
   }
     
-  castTaunt(caster, ability) { // Added ability parameter
-    const radius = ability.aoeRadius || 250;
+  castTaunt(caster, effectiveSpell) { // Changed ability to effectiveSpell
+    const radius = effectiveSpell.aoeRadius || 250; // Use effectiveSpell
     this.engine.systems.get('visual').createEffect({
       type: 'taunt', x: caster.x, y: caster.y, radius: radius, duration: 1.5
     });
@@ -391,16 +425,16 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     unitsInRange.forEach(unit => {
       unit.target = caster;
       this.addDebuff({
-        name: "Taunted", targetUnit: unit, source: caster,
-        duration: ability.debuffDuration || 5,
+        name: effectiveSpell.name || "Taunted", targetUnit: unit, source: caster, // Use effectiveSpell
+        duration: effectiveSpell.debuffDuration || 5, // Use effectiveSpell
         effect: "taunt", visualOnly: true, visualEffect: "tauntedIndicator"
       });
     });
     return true;
   }
     
-  castSpiritLink(caster, targetX, targetY, ability) { // Added ability parameter
-    const radius = ability.aoeRadius || 300;
+  castSpiritLink(caster, targetX, targetY, effectiveSpell) { // Changed ability to effectiveSpell
+    const radius = effectiveSpell.aoeRadius || 300; // Use effectiveSpell
     this.engine.systems.get('visual').createEffect({
       type: 'spiritLink', x: targetX, y: targetY, radius: radius, duration: 2.0
     });
@@ -408,15 +442,15 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     const friendlyUnits = this.engine.entities.getUnits(caster.playerId);
     const unitsInRange = friendlyUnits.filter(u => this.distanceBetween(u, {x: targetX, y: targetY}) <= radius);
     
-    const maxUnits = ability.maxLinkedUnits || 4;
+    const maxUnits = effectiveSpell.maxLinkedUnits || 4; // Use effectiveSpell
     if (unitsInRange.length < 2) return false; // Need at least 2
     
     const linkedUnits = unitsInRange.slice(0, maxUnits);
     
     const spiritLinkGroup = {
       id: Date.now(), units: linkedUnits, source: caster,
-      damageSharingPercentage: ability.damageSharingPercentage || 0.5,
-      duration: ability.effectDuration || 45,
+      damageSharingPercentage: effectiveSpell.damageSharingPercentage || 0.5, // Use effectiveSpell
+      duration: effectiveSpell.effectDuration || 45, // Use effectiveSpell
     };
     
     if (!this.spiritLinkGroups) this.spiritLinkGroups = [];
@@ -424,8 +458,8 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     
     linkedUnits.forEach(unit => {
       this.addBuff({
-        name: "Spirit Link", targetUnit: unit, source: caster,
-        duration: ability.effectDuration || 45,
+        name: effectiveSpell.name || "Spirit Link", targetUnit: unit, source: caster, // Use effectiveSpell
+        duration: effectiveSpell.effectDuration || 45, // Use effectiveSpell
         effect: "spiritLink", spiritLinkGroupId: spiritLinkGroup.id,
         visualEffect: "spiritLinkAura"
       });
@@ -433,13 +467,13 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     return true;
   }
     
-  castAncestralSpirit(caster, targetX, targetY, ability) { // Added ability parameter
+  castAncestralSpirit(caster, targetX, targetY, effectiveSpell) { // Changed ability to effectiveSpell
     this.engine.systems.get('visual').createEffect({
       type: 'ancestralSpirit', x: targetX, y: targetY, duration: 3.0
     });
     
-    const resurrectableTypes = ability.resurrectableUnitTypes || ["juggernaut", "astralNomad"];
-    const maxAge = ability.maxCorpseAgeSeconds || 60;
+    const resurrectableTypes = effectiveSpell.resurrectableUnitTypes || ["juggernaut", "astralNomad"]; // Use effectiveSpell
+    const maxAge = effectiveSpell.maxCorpseAgeSeconds || 60; // Use effectiveSpell
 
     const validDeadUnits = this.deadUnits.filter(deadUnit => 
       deadUnit.playerId === caster.playerId &&
@@ -481,14 +515,24 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     const effects = [];
     if (!attacker.abilities) return { damage: modifiedDamage, effects };
 
-    attacker.abilities.forEach(ability => {
-      if (!ability.passive || ability.enabled === false) return;
+    attacker.abilities.forEach(unitAbility => { // Renamed to unitAbility
+      if (!unitAbility.passive || unitAbility.enabled === false) return;
+
+      let effectivePassiveSpell = unitAbility; // Default to unitAbility if not refactored
+      if (unitAbility.spellId) {
+        const baseSpell = spellTypes[unitAbility.spellId];
+        if (baseSpell) {
+          effectivePassiveSpell = { ...baseSpell, ...unitAbility };
+        } else {
+          console.warn(`handleAttackAbilities: Base spell not found for spellId ${unitAbility.spellId} on unit ${attacker.type}, passive ability ${unitAbility.name}. Using unit's definition.`);
+        }
+      }
       
-      switch(ability.effect) {
+      switch(effectivePassiveSpell.effect) { // Use effectivePassiveSpell
         case 'pulverize': // Seismic Slam
-          if (Math.random() < (ability.procChance || 0.25)) {
-            const aoeRadius = ability.aoeRadius || 60;
-            const aoeDamage = ability.aoeDamage || 60;
+          if (Math.random() < (effectivePassiveSpell.procChance || 0.25)) {
+            const aoeRadius = effectivePassiveSpell.aoeRadius || 60;
+            const aoeDamage = effectivePassiveSpell.aoeDamage || 60;
             const enemyUnits = this.engine.entities.getUnits()
               .filter(otherUnit => 
                 otherUnit.playerId !== attacker.playerId && 
@@ -502,23 +546,23 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
         case 'burningOil': // Inferno Payload
           effects.push({
             type: 'burningOil', x: target.x, y: target.y,
-            radius: ability.aoeRadius || 80,
-            duration: ability.effectDuration || 5,
+            radius: effectivePassiveSpell.aoeRadius || 80,
+            duration: effectivePassiveSpell.effectDuration || 5,
             sourcePlayerId: attacker.playerId,
-            damagePerSecond: ability.damagePerSecond || 15
+            damagePerSecond: effectivePassiveSpell.damagePerSecond || 15
           });
           break;
         case 'pillage': // Plunder
           if (target.type === 'fortress') {
             const player = this.engine.players[attacker.playerId];
-            player.gold += (ability.goldPerHit || 10);
+            player.gold += (effectivePassiveSpell.goldPerHit || 10);
             effects.push({ type: 'plunder', x: attacker.x, y: attacker.y });
           }
           break;
         case 'freezingBreath': // Glacial Tempest
           if (target.type === 'fortress') {
             target.stunned = true;
-            target.stunDuration = ability.stunDuration || 4;
+            target.stunDuration = effectivePassiveSpell.stunDuration || 4;
             effects.push({ type: 'glacialTempest', x: target.x, y: target.y });
           }
           break;
@@ -531,20 +575,30 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     let modifiedDamage = damage;
     if (!defender.abilities) return modifiedDamage;
 
-    defender.abilities.forEach(ability => {
-      if (!ability.passive || ability.enabled === false) return;
+    defender.abilities.forEach(unitAbility => { // Renamed to unitAbility
+      if (!unitAbility.passive || unitAbility.enabled === false) return;
+
+      let effectivePassiveSpell = unitAbility; // Default to unitAbility if not refactored
+      if (unitAbility.spellId) {
+        const baseSpell = spellTypes[unitAbility.spellId];
+        if (baseSpell) {
+          effectivePassiveSpell = { ...baseSpell, ...unitAbility };
+        } else {
+          console.warn(`handleDefenseAbilities: Base spell not found for spellId ${unitAbility.spellId} on unit ${defender.type}, passive ability ${unitAbility.name}. Using unit's definition.`);
+        }
+      }
       
-      switch(ability.effect) {
+      switch(effectivePassiveSpell.effect) { // Use effectivePassiveSpell
         case 'defend': // Phalanx Stance
           if (attackType === 'pierce') {
-            modifiedDamage *= (1 - (ability.pierceDamageReductionPercentage || 0.5));
+            modifiedDamage *= (1 - (effectivePassiveSpell.pierceDamageReductionPercentage || 0.5));
             this.engine.systems.get('visual').createEffect({
               type: 'phalanxStance', x: defender.x, y: defender.y, duration: 0.5
             });
           }
           break;
         case 'hardenSkin': // Crystalline Carapace
-          modifiedDamage = Math.max(ability.minDamageTaken || 3, modifiedDamage - (ability.damageReductionAmount || 8));
+          modifiedDamage = Math.max(effectivePassiveSpell.minDamageTaken || 3, modifiedDamage - (effectivePassiveSpell.damageReductionAmount || 8));
           this.engine.systems.get('visual').createEffect({
             type: 'crystallineCarapace', x: defender.x, y: defender.y, duration: 0.5
           });
@@ -554,8 +608,11 @@ useAbility(unit, abilityName, targetX, targetY, targetUnit = null) {
     
     if (this.spiritLinkGroups) {
       this.spiritLinkGroups.forEach(group => {
+        // Spirit Link damage sharing logic itself doesn't directly depend on the defender's other passive abilities' definitions.
+        // The group.damageSharingPercentage is set when the Spirit Link is cast, using effectiveSpell at that time.
+        // So, no changes needed here based on the current defender's other passives.
         if (group.units.includes(defender)) {
-          const damageToShare = modifiedDamage * (group.damageSharingPercentage || 0.5); // Use data-driven
+          const damageToShare = modifiedDamage * (group.damageSharingPercentage || 0.5); 
           const numOtherUnits = group.units.length - 1;
           if (numOtherUnits > 0) {
             const sharedDamage = damageToShare / numOtherUnits;

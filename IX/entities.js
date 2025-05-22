@@ -1,4 +1,5 @@
 // IX/entities.js - Consolidated entity classes
+import { unitTypes } from './data/unitTypes.js'; // Import unitTypes
 
 // Base entity class
 export class Entity {
@@ -63,7 +64,7 @@ export class Unit extends Entity {
   
   initializeFromType(type) {
     // Load unit data from unitTypes config
-    const unitData = window.unitTypes[type];
+    const unitData = unitTypes[type]; // Use imported unitTypes
     if (!unitData || !unitData.stats) {
       console.error(`Invalid unit type: ${type}`);
       return;
