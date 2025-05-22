@@ -103,12 +103,14 @@
         {
           "spellId": "castLightningShield",
           "name": "Storm Aegis",
-          "enabled": false
+          "enabled": false,
+          "requiredUpgrade": "stormAegis"
         },
         {
           "spellId": "castBloodlust",
           "name": "Primal Fury",
-          "enabled": false
+          "enabled": false,
+          "requiredUpgrade": "primalFury"
         }
       ],
       "possibleUpgrades": [
